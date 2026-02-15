@@ -156,6 +156,7 @@ body {
         overflow: hidden;
         flex: 1;
         min-height: 0;
+        grid-template-columns: 1fr !important; /* Single column on mobile */
     }
 
     .panel {
@@ -165,11 +166,18 @@ body {
         flex-direction: column;
     }
 
+    /* Hide side panel (player stats) on mobile to make room for keyboard */
+    .panel:nth-child(2) {
+        display: none !important;
+    }
+
     .panel-content {
         overflow-y: auto;
         overflow-x: hidden;
         flex: 1;
         -webkit-overflow-scrolling: touch;
+        display: flex;
+        flex-direction: column;
     }
 
     .panel-header {
@@ -1581,12 +1589,25 @@ input[type="file"] {
 @media (max-width: 768px) {
     .custom-keyboard {
         display: block;
+        padding: 5px;
+        margin: 5px 0;
+    }
+
+    .keyboard-row {
+        gap: 3px;
+        margin: 3px 0;
     }
 
     .keyboard-key {
-        font-size: 11px;
-        padding: 10px 6px;
-        min-width: 35px;
+        font-size: 12px;
+        padding: 10px 5px;
+        min-width: 30px;
+    }
+
+    .custom-answer-display {
+        font-size: 16px !important;
+        padding: 8px !important;
+        margin: 5px 0 !important;
     }
 }
 

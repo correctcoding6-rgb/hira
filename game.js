@@ -1,6 +1,8 @@
 // ===================================
 // VOCABULARY DATABASE
 // ===================================
+console.log('🎮 GAME.JS LOADED');
+
 const vocabularyDatabase = {
     'あ': [
         { jp: 'あい', romanji: 'ai', translation: 'love', breakdown: ['あ(a)', 'い(i)'] },
@@ -212,6 +214,16 @@ const vocabularyDatabase = {
 // PALACE/CHAPTER DEFINITIONS
 // ===================================
 const palaces = [
+    {
+        id: 0,
+        name: "🥋 TRAINING DOJO",
+        icon: "🥋",
+        characters: [], // ALL learned characters
+        intro: "Train with ALL characters you've learned! Face them all to master your skills.",
+        unlocked: true,
+        ruler: "Training Master",
+        isTrainingDojo: true
+    },
     {
         id: 1,
         name: "Castle of Vowels",
@@ -846,12 +858,24 @@ function showPalaceSelect() {
     updateBattleCheatsheet([]);
     
     const palacesHTML = palaces.map(palace => {
+        // Training Dojo is ALWAYS unlocked and available
+        if (palace.isTrainingDojo) {
+            return `
+                <div class="palace-card" onclick="startPalace(${palace.id})">
+                    <div class="palace-icon">${palace.icon}</div>
+                    <div class="palace-name">${palace.name}</div>
+                    <div class="palace-progress">ALL 46 Characters</div>
+                    <div class="palace-status">🎯 AVAILABLE</div>
+                </div>
+            `;
+        }
+
         const isCompleted = completedPalaces.includes(palace.id);
         const statusClass = !palace.unlocked ? 'locked' : (isCompleted ? 'completed' : '');
         const statusText = !palace.unlocked ? '🔒 LOCKED' : (isCompleted ? '✅ INFILTRATED' : '🎯 AVAILABLE');
-        
+
         const learnedCount = palace.characters.filter(c => allLearnedChars.includes(c)).length;
-        
+
         return `
             <div class="palace-card ${statusClass}" onclick="${palace.unlocked ? `startPalace(${palace.id})` : ''}">
                 <div class="palace-icon">${palace.icon}</div>
@@ -884,15 +908,6 @@ function showPalaceSelect() {
             <button class="persona-btn btn-item" onclick="showWordInventory()" style="width: 100%; background: linear-gradient(135deg, #9900ff, #6600cc); border-color: #7700dd; box-shadow: 0 4px 0 #4400aa;">
                 📖 WORD INVENTORY (${encounteredVocab.length})
             </button>
-            ${Object.keys(confidants).length >= 3 ? `
-            <button class="persona-btn btn-attack" onclick="startTrainingDojo()" style="width: 100%; background: linear-gradient(135deg, #00ff88, #00cc66); border-color: #00aa55; box-shadow: 0 4px 0 #008844;">
-                🥋 TRAINING DOJO
-            </button>
-            ` : `
-            <button class="persona-btn btn-attack" onclick="alert('Learn 3+ characters first!')" style="width: 100%; opacity: 0.5; cursor: not-allowed;">
-                🥋 TRAINING DOJO
-            </button>
-            `}
         </div>
         
         <div class="palace-grid">
@@ -907,11 +922,24 @@ function showPalaceSelect() {
 
 function startPalace(palaceId) {
     currentPalace = palaces.find(p => p.id === palaceId);
+
+    // If Training Dojo, select 3-7 random characters for focused training
+    if (currentPalace.isTrainingDojo) {
+        const allHiragana = Object.keys(hiraganaData);
+        const count = Math.floor(Math.random() * 5) + 3; // 3-7 characters
+        const shuffled = [...allHiragana].sort(() => Math.random() - 0.5);
+        const selectedChars = shuffled.slice(0, count);
+
+        currentPalace.characters = selectedChars;
+        currentPalace.intro = `Today's training: ${count} characters (${selectedChars.join(' ')})! Learn them, then face 20 varied challenges including vocabulary and combos.`;
+        currentPalace.trainingMode = true; // Flag for special question generation
+    }
+
     currentCharIndex = 0;
     sessionCorrect = 0;
     gameDay++;
     document.getElementById('gameDate').textContent = `DAY ${String(gameDay).padStart(3, '0')}`;
-    
+
     showPalaceIntro();
 }
 
@@ -1022,6 +1050,23 @@ function startBattle() {
     usedVocabThisBattle = {};
     globalUsedVocab = [];
 
+    // TRAINING DOJO MODE: Generate 20 varied questions
+    if (currentPalace.trainingMode) {
+        const dojoQuestions = generateDojoQuestions(currentPalace.characters);
+        // Convert to battle plan format
+        const battlePlan = dojoQuestions.map(q => ({
+            char: q.char || q.vocab.jp[0], // Use first char as reference
+            vocab: q.vocab || null,
+            dojoQuestion: q // Store full question data
+        }));
+
+        window.battlePlan = battlePlan;
+        currentBattleChars = battlePlan.map(q => q.char);
+        currentCharIndex = 0;
+        showBattle();
+        return;
+    }
+
     // STRUCTURED BATTLE: Each character gets exactly 3 questions
     // 1. Single character
     // 2. Vocab word 1
@@ -1125,9 +1170,92 @@ function startBattle() {
     showBattle();
 }
 
+function showDojoQuestionInBattle(question) {
+    const progress = currentCharIndex + 1;
+    const total = currentBattleChars.length;
+
+    const mainContent = document.getElementById('mainContent');
+    mainContent.innerHTML = `
+        <div style="background: rgba(0,255,136,0.1); border: 2px solid #00ff88; padding: 10px; margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: #00ff88; font-family: 'Orbitron'; font-size: 14px;">📊 QUESTION ${progress}/${total}</span>
+                <span style="color: #ffff00; font-family: 'Orbitron'; font-size: 14px;">✓ ${sessionCorrect} CORRECT</span>
+            </div>
+        </div>
+
+        <div class="metaverse-scene" style="padding: 20px; margin: 10px 0;">
+            <div class="shadow-enemy">
+                <div class="shadow-char" style="font-size: 60px;">${question.display}</div>
+                ${question.translation ? `<div class="shadow-name" style="color: #00ff88;">${question.translation}</div>` : ''}
+            </div>
+        </div>
+
+        <div class="dialogue-box" style="padding: 10px; margin: 10px 0; font-size: 13px;">
+            ${question.prompt}
+        </div>
+
+        ${isMobile ? createCustomKeyboard('checkTrainingAnswer') : `
+            <input type="text" class="persona-input" id="battleInput" placeholder="Type romanji..." autocomplete="off" style="margin: 8px 0;">
+        `}
+
+        <div class="action-grid" style="gap: 8px; margin: 8px 0;">
+            ${!isMobile ? `<button class="persona-btn btn-attack" onclick="checkTrainingAnswer()" style="padding: 10px; font-size: 13px;">⚔️ ATTACK</button>` : ''}
+        </div>
+
+        <div class="battle-message" id="battleMessage" style="min-height: 30px; margin: 8px 0;"></div>
+    `;
+
+    if (!isMobile) {
+        const input = document.getElementById('battleInput');
+        if (input) {
+            input.focus();
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') checkTrainingAnswer();
+            });
+        }
+    }
+}
+
+function checkTrainingAnswer() {
+    const question = window.battlePlan[currentCharIndex].dojoQuestion;
+    let userAnswer;
+
+    if (isMobile) {
+        userAnswer = getCustomAnswer();
+    } else {
+        const input = document.getElementById('battleInput');
+        userAnswer = input ? input.value.trim().toLowerCase() : '';
+    }
+
+    const correctAnswer = question.answer.toLowerCase();
+    const messageEl = document.getElementById('battleMessage');
+
+    if (userAnswer === correctAnswer) {
+        sessionCorrect++;
+        messageEl.innerHTML = `<span class="damage-text">✓ CORRECT!</span>`;
+        addXP(15);
+        money += 50;
+        updatePlayerStats();
+    } else {
+        messageEl.innerHTML = `<span class="damage-text">✗ WRONG! Answer: "${correctAnswer}"</span>`;
+    }
+
+    setTimeout(() => {
+        clearCustomAnswer();
+        currentCharIndex++;
+        showBattle();
+    }, 1500);
+}
+
 function showBattle() {
     if (currentCharIndex >= currentBattleChars.length) {
         completePalace();
+        return;
+    }
+
+    // TRAINING DOJO MODE: Use dojo question format
+    if (currentPalace.trainingMode && window.battlePlan[currentCharIndex].dojoQuestion) {
+        showDojoQuestionInBattle(window.battlePlan[currentCharIndex].dojoQuestion);
         return;
     }
 
@@ -1226,10 +1354,16 @@ function showBattle() {
         <div class="battle-message" id="battleMessage" style="min-height: 30px; margin: 8px 0;"></div>
     `;
     
-    document.getElementById('battleInput').focus();
-    document.getElementById('battleInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') performAttack();
-    });
+    // Only focus on input if not mobile (mobile uses custom keyboard)
+    if (!isMobile) {
+        const battleInput = document.getElementById('battleInput');
+        if (battleInput) {
+            battleInput.focus();
+            battleInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') performAttack();
+            });
+        }
+    }
     
     updateHintButtons();
 }
@@ -1582,10 +1716,16 @@ function showVocabBattle() {
         <div class="battle-message" id="battleMessage"></div>
     `;
     
-    document.getElementById('battleInput').focus();
-    document.getElementById('battleInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') performVocabAttack();
-    });
+    // Only focus on input if not mobile (mobile uses custom keyboard)
+    if (!isMobile) {
+        const battleInput = document.getElementById('battleInput');
+        if (battleInput) {
+            battleInput.focus();
+            battleInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') performVocabAttack();
+            });
+        }
+    }
 }
 
 function performVocabAttack() {
@@ -2041,29 +2181,61 @@ document.addEventListener('scroll', () => {
 // ===================================
 
 let customKeyboardAnswer = '';
-const isMobile = window.innerWidth <= 768;
 
-// All romanji keys
+// Improved mobile detection
+function detectMobile() {
+    // Check for ?mobile=true in URL for testing
+    const urlParams = new URLSearchParams(window.location.search);
+    const forceMobile = urlParams.get('mobile') === 'true';
+
+    const isMobileWidth = window.innerWidth <= 768;
+    const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isMobileDevice = forceMobile || isMobileWidth || isMobileUA;
+
+    console.log('🔍 Mobile Detection:', {
+        width: window.innerWidth,
+        forceMobile: forceMobile,
+        isMobileWidth,
+        isMobileUA,
+        result: isMobileDevice
+    });
+
+    if (forceMobile) {
+        console.log('⚠️ MOBILE MODE FORCED VIA URL PARAMETER');
+        // Inject CSS to force mobile layout
+        const style = document.createElement('style');
+        style.textContent = `
+            /* Force mobile styles for testing */
+            .game-header { display: none !important; }
+            .persona-input { display: none !important; }
+            .custom-keyboard { display: block !important; }
+            .custom-answer-display { display: block !important; }
+            .action-grid .btn-attack { display: none !important; } /* Only hide attack button in battles */
+            html { max-width: 768px; margin: 0 auto; }
+        `;
+        document.head.appendChild(style);
+    }
+
+    return isMobileDevice;
+}
+
+const isMobile = detectMobile();
+
+// QWERTY keyboard layout
 const keyboardLayout = [
-    ['a', 'i', 'u', 'e', 'o'],
-    ['ka', 'ki', 'ku', 'ke', 'ko'],
-    ['sa', 'shi', 'su', 'se', 'so'],
-    ['ta', 'chi', 'tsu', 'te', 'to'],
-    ['na', 'ni', 'nu', 'ne', 'no'],
-    ['ha', 'hi', 'fu', 'he', 'ho'],
-    ['ma', 'mi', 'mu', 'me', 'mo'],
-    ['ya', 'yu', 'yo', 'ra', 'ri'],
-    ['ru', 're', 'ro', 'wa', 'wo'],
-    ['n', 'ga', 'gi', 'gu', 'ge'],
-    ['go', 'za', 'ji', 'zu', 'ze'],
-    ['zo', 'da', 'di', 'du', 'de'],
-    ['do', 'ba', 'bi', 'bu', 'be'],
-    ['bo', 'pa', 'pi', 'pu', 'pe', 'po']
+    ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+    ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+    ['z', 'x', 'c', 'v', 'b', 'n', 'm']
 ];
 
 function createCustomKeyboard(targetFunction) {
-    if (!isMobile) return '';
+    console.log('⌨️ Creating custom keyboard, isMobile:', isMobile);
+    if (!isMobile) {
+        console.log('❌ Not mobile, skipping keyboard');
+        return '';
+    }
 
+    console.log('✅ Rendering custom keyboard for:', targetFunction);
     const keyboardHTML = `
         <div class="custom-answer-display" id="customAnswerDisplay">
             ${customKeyboardAnswer || '(tap keys to type)'}
@@ -2072,7 +2244,7 @@ function createCustomKeyboard(targetFunction) {
             ${keyboardLayout.map((row, idx) => `
                 <div class="keyboard-row">
                     ${row.map(key => `
-                        <button class="keyboard-key" onclick="addToCustomAnswer('${key}')">${key}</button>
+                        <button class="keyboard-key ${idx === 0 ? 'keyboard-key-large' : ''}" onclick="addToCustomAnswer('${key}')">${key}</button>
                     `).join('')}
                     ${idx === keyboardLayout.length - 1 ? `
                         <button class="keyboard-key backspace" onclick="backspaceCustomAnswer()">⌫</button>
@@ -2087,7 +2259,9 @@ function createCustomKeyboard(targetFunction) {
 }
 
 function addToCustomAnswer(char) {
+    console.log('➕ Adding to answer:', char);
     customKeyboardAnswer += char;
+    console.log('📝 Current answer:', customKeyboardAnswer);
     updateCustomAnswerDisplay();
 }
 
@@ -2315,10 +2489,16 @@ function showRoyaleBattle() {
         <div class="battle-message" id="battleMessage"></div>
     `;
     
-    document.getElementById('battleInput').focus();
-    document.getElementById('battleInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') checkRoyaleAnswer();
-    }, { once: true });
+    // Only focus on input if not mobile (mobile uses custom keyboard)
+    if (!isMobile) {
+        const battleInput = document.getElementById('battleInput');
+        if (battleInput) {
+            battleInput.focus();
+            battleInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') checkRoyaleAnswer();
+            }, { once: true });
+        }
+    }
 }
 
 function checkRoyaleAnswer() {
@@ -2962,56 +3142,79 @@ function showDojoQuestion() {
     const progress = dojoSession.currentQuestion + 1;
     const total = dojoSession.questions.length;
 
-    // Update cheatsheet with relevant characters
-    if (question.type === 'character') {
-        updateBattleCheatsheet([question.char]);
-    } else if (question.type === 'vocabulary' || question.type === 'fill_blank') {
-        const chars = question.vocab.jp.split('').filter(c => hiraganaData[c]);
-        updateBattleCheatsheet(chars);
-    }
-
+    // COPIED EXACTLY FROM PALACE BATTLE
     const mainContent = document.getElementById('mainContent');
     mainContent.innerHTML = `
-        <div style="background: rgba(0,255,136,0.1); border: 2px solid #00ff88; padding: 10px; margin-bottom: 15px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="color: #00ff88; font-family: 'Orbitron'; font-size: 14px;">📊 QUESTION ${progress}/${total}</span>
-                <span style="color: #ffff00; font-family: 'Orbitron'; font-size: 14px;">✓ ${dojoSession.correct} CORRECT</span>
-            </div>
-        </div>
-
-        <div class="metaverse-scene">
-            <div style="background: #00ff88; color: #000; padding: 8px 15px; font-size: 12px; display: inline-block; margin-bottom: 15px; font-family: Orbitron; font-weight: 700;">
-                ${question.type.toUpperCase().replace('_', ' ')} CHALLENGE
-            </div>
+        <div class="metaverse-scene" style="padding: 20px; margin: 10px 0;">
             <div class="shadow-enemy">
-                <div class="shadow-char" style="font-size: 48px;">${question.display}</div>
-                ${question.translation ? `<div class="shadow-name" style="color: #00ff88;">${question.translation}</div>` : ''}
+                <div class="shadow-char" style="font-size: 60px;">${question.display}</div>
+                <div class="shadow-name">QUESTION ${progress}/${total}</div>
             </div>
         </div>
 
-        <div class="dialogue-box">
+        <div class="dialogue-box" style="padding: 10px; margin: 10px 0; font-size: 13px;">
             ${question.prompt}
         </div>
 
-        <input type="text" class="persona-input" id="dojoInput" placeholder="Type romanji..." autocomplete="off">
-
-        <div class="action-grid">
-            <button class="persona-btn btn-attack" onclick="checkDojoAnswer()">⚔️ ANSWER</button>
+        <div class="custom-answer-display" id="customAnswerDisplay" style="display: block !important; background: #000; border: 2px solid #ff0000; padding: 12px; font-size: 20px; text-align: center; color: #ffff00; margin: 10px 0;">
+            (tap keys to type)
         </div>
 
-        <div class="battle-message" id="dojoMessage"></div>
+        <div style="display: block !important; background: #000; border: 2px solid #ff0000; padding: 10px; margin: 10px 0;">
+            <div style="display: flex; gap: 5px; margin: 5px 0;">
+                <button onclick="addToCustomAnswer('q')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">q</button>
+                <button onclick="addToCustomAnswer('w')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">w</button>
+                <button onclick="addToCustomAnswer('e')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">e</button>
+                <button onclick="addToCustomAnswer('r')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">r</button>
+                <button onclick="addToCustomAnswer('t')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">t</button>
+                <button onclick="addToCustomAnswer('y')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">y</button>
+                <button onclick="addToCustomAnswer('u')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">u</button>
+                <button onclick="addToCustomAnswer('i')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">i</button>
+                <button onclick="addToCustomAnswer('o')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">o</button>
+                <button onclick="addToCustomAnswer('p')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">p</button>
+            </div>
+            <div style="display: flex; gap: 5px; margin: 5px 0;">
+                <button onclick="addToCustomAnswer('a')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">a</button>
+                <button onclick="addToCustomAnswer('s')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">s</button>
+                <button onclick="addToCustomAnswer('d')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">d</button>
+                <button onclick="addToCustomAnswer('f')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">f</button>
+                <button onclick="addToCustomAnswer('g')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">g</button>
+                <button onclick="addToCustomAnswer('h')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">h</button>
+                <button onclick="addToCustomAnswer('j')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">j</button>
+                <button onclick="addToCustomAnswer('k')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">k</button>
+                <button onclick="addToCustomAnswer('l')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">l</button>
+            </div>
+            <div style="display: flex; gap: 5px; margin: 5px 0;">
+                <button onclick="addToCustomAnswer('z')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">z</button>
+                <button onclick="addToCustomAnswer('x')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">x</button>
+                <button onclick="addToCustomAnswer('c')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">c</button>
+                <button onclick="addToCustomAnswer('v')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">v</button>
+                <button onclick="addToCustomAnswer('b')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">b</button>
+                <button onclick="addToCustomAnswer('n')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">n</button>
+                <button onclick="addToCustomAnswer('m')" style="flex:1; padding:12px; background:#ff0000; color:#fff; border:none; font-size:14px; cursor:pointer;">m</button>
+                <button onclick="backspaceCustomAnswer()" style="flex:1; padding:12px; background:#666; color:#fff; border:none; font-size:14px; cursor:pointer;">⌫</button>
+                <button onclick="checkDojoAnswer()" style="flex:1; padding:12px; background:#ffff00; color:#000; border:none; font-size:14px; cursor:pointer; font-weight:700;">✓</button>
+            </div>
+        </div>
+
+        <div class="battle-message" id="dojoMessage" style="min-height: 30px; margin: 8px 0;"></div>
     `;
 
-    const input = document.getElementById('dojoInput');
-    input.focus();
-    input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') checkDojoAnswer();
-    }, { once: true });
+    if (!isMobile) {
+        const input = document.getElementById('dojoInput');
+        if (input) {
+            input.focus();
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') checkDojoAnswer();
+            }, { once: true });
+        }
+    }
 }
 
 function checkDojoAnswer() {
-    const input = document.getElementById('dojoInput');
-    const userAnswer = input.value.trim().toLowerCase();
+    // ALWAYS use custom keyboard answer in Training Dojo
+    const userAnswer = getCustomAnswer();
+
     const question = dojoSession.questions[dojoSession.currentQuestion];
     const correctAnswer = question.answer.toLowerCase();
     const messageEl = document.getElementById('dojoMessage');
@@ -3070,8 +3273,13 @@ function checkDojoAnswer() {
     dojoSession.currentQuestion++;
 
     // Auto-continue after delay
-    input.disabled = true;
+    if (!isMobile) {
+        const input = document.getElementById('dojoInput');
+        if (input) input.disabled = true;
+    }
+
     setTimeout(() => {
+        clearCustomAnswer(); // Clear keyboard for next question
         showDojoQuestion();
     }, 1500);
 }
