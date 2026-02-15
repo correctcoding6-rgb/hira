@@ -225,6 +225,16 @@ const palaces = [
         isTrainingDojo: true
     },
     {
+        id: -1,
+        name: "📚 EASY MODE",
+        icon: "📚",
+        characters: [], // 7 random characters
+        intro: "Perfect for beginners! Master 7 characters with a grading system (C/B/A). Get all A grades to complete!",
+        unlocked: true,
+        ruler: "Sensei",
+        isEasyMode: true
+    },
+    {
         id: 1,
         name: "Castle of Vowels",
         icon: "🏰",
@@ -870,6 +880,18 @@ function showPalaceSelect() {
             `;
         }
 
+        // Easy Mode is ALWAYS unlocked and available
+        if (palace.isEasyMode) {
+            return `
+                <div class="palace-card" onclick="startPalace(${palace.id})">
+                    <div class="palace-icon">${palace.icon}</div>
+                    <div class="palace-name">${palace.name}</div>
+                    <div class="palace-progress">7 Random Characters</div>
+                    <div class="palace-status">🎯 AVAILABLE</div>
+                </div>
+            `;
+        }
+
         const isCompleted = completedPalaces.includes(palace.id);
         const statusClass = !palace.unlocked ? 'locked' : (isCompleted ? 'completed' : '');
         const statusText = !palace.unlocked ? '🔒 LOCKED' : (isCompleted ? '✅ INFILTRATED' : '🎯 AVAILABLE');
@@ -933,6 +955,53 @@ function startPalace(palaceId) {
         currentPalace.characters = selectedChars;
         currentPalace.intro = `Today's training: ${count} characters (${selectedChars.join(' ')})! Learn them, then face 20 varied challenges including vocabulary and combos.`;
         currentPalace.trainingMode = true; // Flag for special question generation
+    }
+
+    // If Easy Mode, load saved progress or start new session
+    if (currentPalace.isEasyMode) {
+        const allHiragana = Object.keys(hiraganaData);
+        let selectedChars;
+        let grades = {};
+
+        // Try to load saved Easy Mode progress
+        const savedEasyMode = localStorage.getItem('easyModeProgress');
+        if (savedEasyMode) {
+            const saved = JSON.parse(savedEasyMode);
+            // Check if all characters have A grade
+            const allAGrade = saved.characters.every(c => saved.grades[c].correct >= 5);
+
+            if (allAGrade) {
+                // All A's - select 7 new characters based on lowest global grades
+                console.log('All A grades! Selecting new 7 characters...');
+                selectedChars = selectNewEasyModeChars(allHiragana, saved.grades);
+                // Reset grades for new selection
+                grades = {};
+                selectedChars.forEach(char => {
+                    grades[char] = { correct: 0, total: 0, grade: 'F' };
+                });
+            } else {
+                // Continue with same characters
+                console.log('Continuing Easy Mode with saved progress');
+                selectedChars = saved.characters;
+                grades = saved.grades;
+            }
+        } else {
+            // First time - pick 7 random characters
+            console.log('First Easy Mode run - selecting random 7 characters');
+            const shuffled = [...allHiragana].sort(() => Math.random() - 0.5);
+            selectedChars = shuffled.slice(0, 7);
+            selectedChars.forEach(char => {
+                grades[char] = { correct: 0, total: 0, grade: 'F' };
+            });
+        }
+
+        currentPalace.characters = selectedChars;
+        currentPalace.intro = `Easy Mode: Master these 7 characters (${selectedChars.join(' ')})! Each character needs 5/5 correct (A grade) to complete.`;
+        currentPalace.easyMode = true;
+        window.easyModeGrades = grades;
+
+        // Save to localStorage
+        saveEasyModeProgress();
     }
 
     currentCharIndex = 0;
@@ -1063,6 +1132,13 @@ function startBattle() {
         window.battlePlan = battlePlan;
         currentBattleChars = battlePlan.map(q => q.char);
         currentCharIndex = 0;
+        showBattle();
+        return;
+    }
+
+    // EASY MODE: Graded questions until all A's
+    if (currentPalace.isEasyMode) {
+        generateEasyModeQuestions();
         showBattle();
         return;
     }
@@ -1256,6 +1332,12 @@ function showBattle() {
     // TRAINING DOJO MODE: Use dojo question format
     if (currentPalace.trainingMode && window.battlePlan[currentCharIndex].dojoQuestion) {
         showDojoQuestionInBattle(window.battlePlan[currentCharIndex].dojoQuestion);
+        return;
+    }
+
+    // EASY MODE: Show question with grade display
+    if (currentPalace.isEasyMode && window.battlePlan[currentCharIndex].easyModeQuestion) {
+        showEasyModeQuestion();
         return;
     }
 
@@ -2965,19 +3047,22 @@ function generateDojoQuestions(characters) {
             const wordChars = vocab.jp.split('');
 
             if (wordChars.length >= 2) {
-                // Remove one character for user to fill in
+                // Show romanji with blank, ask to fill in the missing sound
                 const blankIndex = Math.floor(Math.random() * wordChars.length);
                 const missingChar = wordChars[blankIndex];
                 const missingRomanji = hiraganaData[missingChar] || missingChar;
 
-                const displayWord = wordChars.map((c, idx) => idx === blankIndex ? '_' : c).join('');
+                // Create romanji display with blank
+                const romanjiDisplay = wordChars.map((c, idx) =>
+                    idx === blankIndex ? '_' : (hiraganaData[c] || c)
+                ).join('');
 
                 questions.push({
                     type: 'fill_blank',
                     vocab: vocab,
                     answer: missingRomanji,
-                    display: displayWord,
-                    prompt: `Fill in the missing character (${vocab.translation})`,
+                    display: romanjiDisplay, // Show romanji with blank (e.g., "a_i")
+                    prompt: `Fill in the missing sound (${vocab.translation})`,
                     translation: vocab.translation,
                     fullWord: vocab.jp
                 });
@@ -3014,6 +3099,171 @@ function generateDojoQuestions(characters) {
     }
 
     return questions;
+}
+
+function generateEasyModeQuestions() {
+    const grades = window.easyModeGrades;
+
+    // Get characters that haven't reached A grade yet
+    const activeChars = currentPalace.characters.filter(char => {
+        const grade = grades[char];
+        return grade.correct < 5; // Not yet A grade (5/5)
+    });
+
+    // If all are A grade, we're done!
+    if (activeChars.length === 0) {
+        completePalace();
+        return;
+    }
+
+    // Weighted selection based on grades (lower grades = higher priority)
+    const weightedChars = [];
+    activeChars.forEach(char => {
+        const grade = grades[char];
+        const weight = 6 - grade.correct; // F=6, C=3, B=2, A=1
+        for (let i = 0; i < weight; i++) {
+            weightedChars.push(char);
+        }
+    });
+
+    // Generate next question from weighted pool
+    const nextChar = weightedChars[Math.floor(Math.random() * weightedChars.length)];
+
+    const battlePlan = [{
+        char: nextChar,
+        vocab: null,
+        easyModeQuestion: true
+    }];
+
+    window.battlePlan = battlePlan;
+    currentBattleChars = [nextChar];
+    currentCharIndex = 0;
+}
+
+function showEasyModeQuestion() {
+    const char = currentBattleChars[currentCharIndex];
+    const grade = window.easyModeGrades[char];
+
+    // Build grade display
+    const allGrades = currentPalace.characters.map(c => {
+        const g = window.easyModeGrades[c];
+        const gradeColor = g.grade === 'A' ? '#00ff00' : g.grade === 'B' ? '#ffff00' : g.grade === 'C' ? '#ff9900' : '#ff0000';
+        return `<span style="color: ${gradeColor};">${c}:${g.grade}(${g.correct}/5)</span>`;
+    }).join(' ');
+
+    const mainContent = document.getElementById('mainContent');
+    mainContent.innerHTML = `
+        <div style="background: rgba(0,200,255,0.1); border: 2px solid #00ccff; padding: 10px; margin-bottom: 15px;">
+            <div style="color: #00ccff; font-family: 'Orbitron'; font-size: 12px;">
+                📊 GRADES: ${allGrades}
+            </div>
+        </div>
+
+        <div class="metaverse-scene" style="padding: 20px; margin: 10px 0;">
+            <div class="shadow-enemy">
+                <div class="shadow-char" style="font-size: 60px;">${char}</div>
+                <div class="shadow-name">CURRENT: ${grade.grade} (${grade.correct}/5)</div>
+            </div>
+        </div>
+
+        <div class="dialogue-box" style="padding: 10px; margin: 10px 0; font-size: 13px;">
+            What sound does this character make?
+        </div>
+
+        ${isMobile ? createCustomKeyboard('submitEasyAnswer') : `
+            <input type="text" class="persona-input" id="battleInput" placeholder="Type romanji..." autocomplete="off" style="margin: 8px 0;">
+        `}
+
+        <div class="action-grid" style="gap: 8px; margin: 8px 0;">
+            ${!isMobile ? `<button class="persona-btn btn-attack" onclick="submitEasyAnswer()" style="padding: 10px; font-size: 13px;">⚔️ ANSWER</button>` : ''}
+        </div>
+
+        <div class="battle-message" id="battleMessage" style="min-height: 30px; margin: 8px 0;"></div>
+    `;
+
+    if (!isMobile) {
+        const input = document.getElementById('battleInput');
+        if (input) {
+            input.focus();
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') submitEasyAnswer();
+            });
+        }
+    }
+}
+
+function submitEasyAnswer() {
+    const char = currentBattleChars[currentCharIndex];
+    let userAnswer;
+
+    if (isMobile) {
+        userAnswer = getCustomAnswer();
+    } else {
+        const input = document.getElementById('battleInput');
+        userAnswer = input ? input.value.trim().toLowerCase() : '';
+    }
+
+    const correctAnswer = hiraganaData[char];
+    const messageEl = document.getElementById('battleMessage');
+
+    const correct = userAnswer === correctAnswer;
+    if (correct) {
+        messageEl.innerHTML = `<span class="damage-text">✓ CORRECT!</span>`;
+    } else {
+        messageEl.innerHTML = `<span class="damage-text">✗ WRONG! Answer: "${correctAnswer}"</span>`;
+    }
+
+    checkEasyModeAnswer(correct);
+}
+
+function checkEasyModeAnswer(correct) {
+    const char = currentBattleChars[currentCharIndex];
+    const grade = window.easyModeGrades[char];
+
+    grade.total++;
+    if (correct) {
+        grade.correct++;
+    }
+
+    // Update grade letter
+    if (grade.correct >= 5) grade.grade = 'A';
+    else if (grade.correct >= 4) grade.grade = 'B';
+    else if (grade.correct >= 3) grade.grade = 'C';
+    else grade.grade = 'F';
+
+    // Save progress after each answer
+    saveEasyModeProgress();
+
+    // Continue to next question
+    setTimeout(() => {
+        clearCustomAnswer();
+        generateEasyModeQuestions(); // Generate next question
+        showBattle();
+    }, 1500);
+}
+
+function saveEasyModeProgress() {
+    if (currentPalace.isEasyMode) {
+        const progress = {
+            characters: currentPalace.characters,
+            grades: window.easyModeGrades
+        };
+        localStorage.setItem('easyModeProgress', JSON.stringify(progress));
+    }
+}
+
+function selectNewEasyModeChars(allHiragana, previousGrades) {
+    // Build list with all hiragana and their grades
+    const charData = allHiragana.map(char => ({
+        char: char,
+        grade: previousGrades[char] ? previousGrades[char].correct : 0
+    }));
+
+    // Sort by lowest grades first
+    charData.sort((a, b) => a.grade - b.grade);
+
+    // Take 7 characters with lowest grades
+    return charData.slice(0, 7).map(c => c.char);
 }
 
 function showDojoLearning() {
