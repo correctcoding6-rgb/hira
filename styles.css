@@ -111,8 +111,23 @@ body {
 
 @media (max-width: 768px) {
     /* Mobile optimizations - Native app feel */
+    :root {
+        --viewport-height: 100vh;
+    }
+
+    html {
+        height: 100vh;
+        height: var(--viewport-height, 100vh);
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
+    }
+
     body {
+        height: 100vh;
+        height: var(--viewport-height, 100vh);
         max-height: 100vh;
+        max-height: var(--viewport-height, 100vh);
         overflow: hidden;
         position: fixed;
         width: 100%;
@@ -121,11 +136,13 @@ body {
 
     .container {
         height: 100vh;
+        height: var(--viewport-height, 100vh);
         padding: 8px;
         overflow: hidden;
         display: flex;
         flex-direction: column;
         touch-action: pan-y;
+        position: relative;
     }
 
     .game-header {
@@ -219,6 +236,14 @@ body {
         padding: 14px 12px;
         font-size: 16px; /* Prevents zoom on iOS */
         min-height: 44px; /* Touch-friendly size */
+        position: relative;
+        transform: translateZ(0); /* Force GPU acceleration */
+    }
+
+    /* Prevent scroll when input is focused */
+    .persona-input:focus {
+        position: relative;
+        transform: translateZ(0);
     }
 
     /* Buttons - ensure touch-friendly */

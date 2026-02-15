@@ -1953,6 +1953,73 @@ loadAllUsers();
 checkURLSync(); // Check for URL-based sync
 showPalaceSelect();
 
+// ===================================
+// MOBILE KEYBOARD FIX
+// ===================================
+
+// Prevent page scrolling when keyboard appears on mobile
+document.addEventListener('focusin', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        // Prevent default scroll behavior
+        e.preventDefault();
+
+        // Small timeout to ensure keyboard is shown
+        setTimeout(() => {
+            // Scroll to top to prevent any unwanted scrolling
+            window.scrollTo(0, 0);
+            document.body.scrollTop = 0;
+        }, 100);
+    }
+});
+
+// Prevent body scroll when input is focused
+document.addEventListener('touchmove', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        e.stopPropagation();
+    }
+}, { passive: false });
+
+// Keep viewport locked on iOS when keyboard appears
+window.addEventListener('resize', function() {
+    // Prevent viewport changes from causing scroll
+    if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+        window.scrollTo(0, 0);
+        document.body.scrollTop = 0;
+    }
+});
+
+// Visual Viewport API - better keyboard handling on iOS
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+        // Keep page locked when keyboard appears
+        const viewport = window.visualViewport;
+        document.documentElement.style.setProperty('--viewport-height', `${viewport.height}px`);
+
+        // Prevent scroll
+        window.scrollTo(0, 0);
+        document.body.scrollTop = 0;
+    });
+
+    window.visualViewport.addEventListener('scroll', (e) => {
+        // Prevent visual viewport scroll
+        e.preventDefault();
+        window.scrollTo(0, 0);
+    });
+}
+
+// Blur input when scrolling starts (extra safety)
+let scrollTimeout;
+document.addEventListener('scroll', () => {
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+        if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+            // Keep position locked
+            window.scrollTo(0, 0);
+            document.body.scrollTop = 0;
+        }
+    }, 10);
+}, { passive: false });
+
 
 // ===================================
 // BATTLE ROYALE MODE
