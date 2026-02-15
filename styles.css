@@ -17,6 +17,7 @@ body {
     color: #fff;
     overflow: hidden;
     /* Prevent pull-to-refresh on mobile */
+    overscroll-behavior: none;
     overscroll-behavior-y: none;
     /* Smoother scrolling on iOS */
     -webkit-overflow-scrolling: touch;
@@ -109,21 +110,27 @@ body {
 }
 
 @media (max-width: 768px) {
-    /* Mobile optimizations */
+    /* Mobile optimizations - Native app feel */
     body {
-        max-height: none;
-        overflow: auto;
+        max-height: 100vh;
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
+        touch-action: pan-y;
     }
 
     .container {
-        height: auto;
-        min-height: 100vh;
+        height: 100vh;
         padding: 8px;
-        overflow: visible;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        touch-action: pan-y;
     }
 
     .game-header {
         margin-bottom: 8px;
+        flex-shrink: 0;
     }
 
     .game-logo {
@@ -138,17 +145,23 @@ body {
 
     .main-grid {
         gap: 10px;
-        overflow: visible;
+        overflow: hidden;
+        flex: 1;
+        min-height: 0;
     }
 
     .panel {
-        min-height: auto;
-        overflow: visible;
+        min-height: 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
     }
 
     .panel-content {
-        overflow: visible;
-        max-height: none;
+        overflow-y: auto;
+        overflow-x: hidden;
+        flex: 1;
+        -webkit-overflow-scrolling: touch;
     }
 
     .panel-header {
@@ -395,21 +408,35 @@ body {
 /* Landscape mode on phones */
 @media (max-width: 768px) and (orientation: landscape) {
     .container {
-        height: auto;
-        overflow-y: auto;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    .game-logo {
+        font-size: 18px;
+    }
+
+    .game-subtitle {
+        font-size: 9px;
     }
 
     .panel-content {
-        max-height: 50vh;
         overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     .metaverse-scene {
         min-height: 100px;
+        padding: 6px;
     }
 
     .shadow-char {
         font-size: 36px;
+    }
+
+    .dialogue-box {
+        padding: 8px;
+        font-size: 11px;
     }
 }
 
