@@ -1205,10 +1205,12 @@ function showBattle() {
                 `What sound does this Shadow make? Type the romanji to attack!`}
         </div>
 
-        <input type="text" class="persona-input" id="battleInput" placeholder="Type romanji..." autocomplete="off" style="margin: 8px 0;">
+        ${isMobile ? createCustomKeyboard('performAttack') : `
+            <input type="text" class="persona-input" id="battleInput" placeholder="Type romanji..." autocomplete="off" style="margin: 8px 0;">
+        `}
 
         <div class="action-grid" style="gap: 8px; margin: 8px 0;">
-            <button class="persona-btn btn-attack" onclick="performAttack()" style="padding: 10px; font-size: 13px;">⚔️ ATTACK (Enter)</button>
+            ${!isMobile ? `<button class="persona-btn btn-attack" onclick="performAttack()" style="padding: 10px; font-size: 13px;">⚔️ ATTACK (Enter)</button>` : ''}
             <button class="persona-btn btn-skill" id="choiceBtn" onclick="showChoices()" style="padding: 10px; font-size: 13px;">🎲 ANALYZE (-5 SP)</button>
             <button class="persona-btn btn-item" id="hintBtn" onclick="useHint()" style="padding: 10px; font-size: 13px;">💡 REVEAL (-10 SP)</button>
             <button class="persona-btn btn-guard" onclick="skipShadow()" style="padding: 10px; font-size: 13px;">⏭️ RETREAT</button>
@@ -1247,14 +1249,24 @@ function updateHintButtons() {
 }
 
 function performAttack() {
-    const input = document.getElementById('battleInput');
-    const userAnswer = input.value.trim().toLowerCase();
     const messageEl = document.getElementById('battleMessage');
+
+    // Get answer from custom keyboard (mobile) or input field (desktop)
+    let userAnswer;
+    if (isMobile) {
+        userAnswer = getCustomAnswer();
+    } else {
+        const input = document.getElementById('battleInput');
+        userAnswer = input ? input.value.trim().toLowerCase() : '';
+    }
 
     // Validate input
     if (!userAnswer) {
         messageEl.innerHTML = `<span class="damage-text">⚠️ Please enter an answer!</span>`;
-        input.focus();
+        if (!isMobile) {
+            const input = document.getElementById('battleInput');
+            if (input) input.focus();
+        }
         return;
     }
 
@@ -1328,7 +1340,10 @@ function performAttack() {
     updateStruggleTracking(currentChar, wasCorrect);
 
     // Disable input and buttons
-    input.disabled = true;
+    if (!isMobile) {
+        const input = document.getElementById('battleInput');
+        if (input) input.disabled = true;
+    }
     const choiceBtn = document.getElementById('choiceBtn');
     const hintBtn = document.getElementById('hintBtn');
     const skipBtn = document.querySelector('.btn-guard');
@@ -1339,6 +1354,7 @@ function performAttack() {
     // AUTO-CONTINUE: Show message for 2 seconds, then continue
     // Keep the last activity message visible
     setTimeout(() => {
+        clearCustomAnswer(); // Clear keyboard for next question
         continueToNextBattle();
     }, 2000);
 
@@ -2019,6 +2035,82 @@ document.addEventListener('scroll', () => {
         }
     }, 10);
 }, { passive: false });
+
+// ===================================
+// CUSTOM MOBILE KEYBOARD
+// ===================================
+
+let customKeyboardAnswer = '';
+const isMobile = window.innerWidth <= 768;
+
+// All romanji keys
+const keyboardLayout = [
+    ['a', 'i', 'u', 'e', 'o'],
+    ['ka', 'ki', 'ku', 'ke', 'ko'],
+    ['sa', 'shi', 'su', 'se', 'so'],
+    ['ta', 'chi', 'tsu', 'te', 'to'],
+    ['na', 'ni', 'nu', 'ne', 'no'],
+    ['ha', 'hi', 'fu', 'he', 'ho'],
+    ['ma', 'mi', 'mu', 'me', 'mo'],
+    ['ya', 'yu', 'yo', 'ra', 'ri'],
+    ['ru', 're', 'ro', 'wa', 'wo'],
+    ['n', 'ga', 'gi', 'gu', 'ge'],
+    ['go', 'za', 'ji', 'zu', 'ze'],
+    ['zo', 'da', 'di', 'du', 'de'],
+    ['do', 'ba', 'bi', 'bu', 'be'],
+    ['bo', 'pa', 'pi', 'pu', 'pe', 'po']
+];
+
+function createCustomKeyboard(targetFunction) {
+    if (!isMobile) return '';
+
+    const keyboardHTML = `
+        <div class="custom-answer-display" id="customAnswerDisplay">
+            ${customKeyboardAnswer || '(tap keys to type)'}
+        </div>
+        <div class="custom-keyboard">
+            ${keyboardLayout.map((row, idx) => `
+                <div class="keyboard-row">
+                    ${row.map(key => `
+                        <button class="keyboard-key" onclick="addToCustomAnswer('${key}')">${key}</button>
+                    `).join('')}
+                    ${idx === keyboardLayout.length - 1 ? `
+                        <button class="keyboard-key backspace" onclick="backspaceCustomAnswer()">⌫</button>
+                        <button class="keyboard-key special" onclick="${targetFunction}()">✓ OK</button>
+                    ` : ''}
+                </div>
+            `).join('')}
+        </div>
+    `;
+
+    return keyboardHTML;
+}
+
+function addToCustomAnswer(char) {
+    customKeyboardAnswer += char;
+    updateCustomAnswerDisplay();
+}
+
+function backspaceCustomAnswer() {
+    customKeyboardAnswer = customKeyboardAnswer.slice(0, -1);
+    updateCustomAnswerDisplay();
+}
+
+function clearCustomAnswer() {
+    customKeyboardAnswer = '';
+    updateCustomAnswerDisplay();
+}
+
+function getCustomAnswer() {
+    return customKeyboardAnswer.trim().toLowerCase();
+}
+
+function updateCustomAnswerDisplay() {
+    const display = document.getElementById('customAnswerDisplay');
+    if (display) {
+        display.textContent = customKeyboardAnswer || '(tap keys to type)';
+    }
+}
 
 
 // ===================================

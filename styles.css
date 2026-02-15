@@ -117,7 +117,6 @@ body {
 
     html {
         height: 100vh;
-        height: var(--viewport-height, 100vh);
         overflow: hidden;
         position: fixed;
         width: 100%;
@@ -125,39 +124,31 @@ body {
 
     body {
         height: 100vh;
-        height: var(--viewport-height, 100vh);
         max-height: 100vh;
-        max-height: var(--viewport-height, 100vh);
         overflow: hidden;
         position: fixed;
         width: 100%;
-        touch-action: pan-y;
+        touch-action: none;
     }
 
     .container {
         height: 100vh;
-        height: var(--viewport-height, 100vh);
-        padding: 8px;
+        padding: 5px;
         overflow: hidden;
         display: flex;
         flex-direction: column;
-        touch-action: pan-y;
+        touch-action: none;
         position: relative;
     }
 
+    /* Hide title and unnecessary elements on mobile */
     .game-header {
-        margin-bottom: 8px;
-        flex-shrink: 0;
+        display: none !important;
     }
 
-    .game-logo {
-        font-size: 22px;
-        letter-spacing: 2px;
-    }
-
-    .game-subtitle {
-        font-size: 10px;
-        letter-spacing: 1px;
+    .panel-header {
+        padding: 6px 10px;
+        font-size: 12px;
     }
 
     .main-grid {
@@ -231,19 +222,25 @@ body {
         padding: 10px;
     }
 
-    /* Input fields - ensure touch-friendly */
+    /* Hide input fields on mobile - use custom keyboard */
     .persona-input {
-        padding: 14px 12px;
-        font-size: 16px; /* Prevents zoom on iOS */
-        min-height: 44px; /* Touch-friendly size */
-        position: relative;
-        transform: translateZ(0); /* Force GPU acceleration */
+        display: none !important;
     }
 
-    /* Prevent scroll when input is focused */
-    .persona-input:focus {
-        position: relative;
-        transform: translateZ(0);
+    /* Show custom keyboard answer display */
+    .custom-answer-display {
+        display: block !important;
+        background: rgba(0, 0, 0, 0.9);
+        border: 2px solid #ff0000;
+        padding: 12px;
+        font-size: 20px;
+        text-align: center;
+        color: #ffff00;
+        font-family: 'Orbitron', sans-serif;
+        min-height: 50px;
+        margin: 10px 0;
+        font-weight: 700;
+        letter-spacing: 2px;
     }
 
     /* Buttons - ensure touch-friendly */
@@ -1517,6 +1514,97 @@ input[type="file"] {
 
 ::-webkit-scrollbar-thumb:hover {
     background: #ff3333;
+}
+
+/* Custom Mobile Keyboard */
+.custom-keyboard {
+    display: none;
+    background: rgba(0, 0, 0, 0.95);
+    border: 2px solid #ff0000;
+    padding: 10px;
+    margin: 10px 0;
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+}
+
+.keyboard-row {
+    display: flex;
+    gap: 5px;
+    margin: 5px 0;
+    justify-content: center;
+}
+
+.keyboard-key {
+    flex: 1;
+    min-width: 0;
+    padding: 12px 8px;
+    background: linear-gradient(135deg, #ff0000, #cc0000);
+    color: #fff;
+    border: 2px solid #ff3333;
+    box-shadow: 0 3px 0 #990000;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.1s;
+    text-align: center;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.keyboard-key:active {
+    box-shadow: 0 1px 0 #990000;
+    transform: translateY(2px);
+    background: linear-gradient(135deg, #cc0000, #990000);
+}
+
+.keyboard-key.special {
+    background: linear-gradient(135deg, #ffff00, #cccc00);
+    color: #000;
+    border-color: #ffff33;
+    box-shadow: 0 3px 0 #999900;
+}
+
+.keyboard-key.special:active {
+    box-shadow: 0 1px 0 #999900;
+    background: linear-gradient(135deg, #cccc00, #999900);
+}
+
+.keyboard-key.backspace {
+    background: linear-gradient(135deg, #666, #444);
+    border-color: #888;
+    box-shadow: 0 3px 0 #222;
+}
+
+.keyboard-key.backspace:active {
+    box-shadow: 0 1px 0 #222;
+}
+
+@media (max-width: 768px) {
+    .custom-keyboard {
+        display: block;
+    }
+
+    .keyboard-key {
+        font-size: 11px;
+        padding: 10px 6px;
+        min-width: 35px;
+    }
+}
+
+@media (max-width: 480px) {
+    .keyboard-key {
+        font-size: 10px;
+        padding: 8px 4px;
+        min-width: 30px;
+    }
+
+    .keyboard-row {
+        gap: 3px;
+        margin: 3px 0;
+    }
+
+    .custom-keyboard {
+        padding: 8px;
+    }
 }
 
 /* Touch device improvements */
