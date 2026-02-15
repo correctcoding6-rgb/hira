@@ -1703,8 +1703,9 @@ function showUserMenu() {
                     </div>
                 </div>
                 <div class="user-actions">
-                    <button class="btn-small btn-export" onclick="exportUser('${userId}')">💾</button>
-                    ${userId !== 'default' ? `<button class="btn-small btn-delete" onclick="deleteUser('${userId}')">🗑️</button>` : ''}
+                    <button class="btn-small btn-export" onclick="copyShareCode('${userId}')" title="Copy Share Code">📋</button>
+                    <button class="btn-small btn-export" onclick="exportUser('${userId}')" title="Download File">💾</button>
+                    ${userId !== 'default' ? `<button class="btn-small btn-delete" onclick="deleteUser('${userId}')" title="Delete">🗑️</button>` : ''}
                 </div>
             </div>
         `;
@@ -1720,7 +1721,12 @@ function showUserMenu() {
                     ⚔️ RECRUIT THIEF
                 </button>
                 
-                <div class="section-title" style="margin-top: 30px;">IMPORT SAVE DATA</div>
+                <div class="section-title" style="margin-top: 30px;">📲 CROSS-DEVICE SYNC</div>
+                <button class="persona-btn btn-skill" onclick="showShareCodeInput()" style="width: 100%; margin-bottom: 10px;">
+                    📋 LOAD FROM SHARE CODE
+                </button>
+
+                <div class="section-title" style="margin-top: 20px;">IMPORT SAVE DATA</div>
                 <input type="file" id="importFile" accept=".json" onchange="importUser(event)">
                 <label for="importFile" class="file-upload-label">
                     📂 IMPORT FROM FILE
@@ -1839,10 +1845,112 @@ function importUser(event) {
 }
 
 // ===================================
+// CROSS-DEVICE SYNC - SHARE CODES
+// ===================================
+
+// Helper: Encode string to base64 (UTF-8 safe)
+function stringToBase64(str) {
+    const bytes = new TextEncoder().encode(str);
+    const binString = Array.from(bytes, (byte) => String.fromCodePoint(byte)).join('');
+    return btoa(binString);
+}
+
+// Helper: Decode base64 to string (UTF-8 safe)
+function base64ToString(base64) {
+    const binString = atob(base64);
+    const bytes = Uint8Array.from(binString, (char) => char.codePointAt(0));
+    return new TextDecoder().decode(bytes);
+}
+
+function generateShareCode(userId) {
+    const userData = allUsers[userId];
+    const dataStr = JSON.stringify(userData);
+    return stringToBase64(dataStr);
+}
+
+function copyShareCode(userId) {
+    const code = generateShareCode(userId);
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(code).then(() => {
+        alert(`✓ Share code copied to clipboard!\n\nUse this code on another device to sync your progress.\n\nCode length: ${code.length} characters`);
+    }).catch(() => {
+        // Fallback: show in prompt
+        prompt('Copy this code to sync your progress on another device:', code);
+    });
+}
+
+function showShareCodeInput() {
+    const code = prompt('Paste your share code here to load your progress from another device:');
+
+    if (!code) return;
+
+    try {
+        // Decode the share code
+        const dataStr = base64ToString(code.trim());
+        const userData = JSON.parse(dataStr);
+
+        if (!userData.codeName || !userData.confidants) {
+            alert('❌ Invalid share code! Please check and try again.');
+            return;
+        }
+
+        const userId = 'user_' + Date.now();
+        allUsers[userId] = userData;
+        localStorage.setItem('hiraganaPhantomThieves', JSON.stringify(allUsers));
+
+        alert(`✓ "${userData.codeName}" synced successfully from share code!`);
+        closeUserMenu();
+        showUserMenu();
+    } catch (error) {
+        alert('❌ Error reading share code: ' + error.message);
+    }
+}
+
+// URL-based auto-sync (optional: load from URL parameter)
+function checkURLSync() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const syncCode = urlParams.get('sync');
+
+    if (syncCode) {
+        try {
+            const dataStr = base64ToString(syncCode);
+            const userData = JSON.parse(dataStr);
+
+            if (userData.codeName && userData.confidants) {
+                const userId = 'user_' + Date.now();
+                allUsers[userId] = userData;
+                localStorage.setItem('hiraganaPhantomThieves', JSON.stringify(allUsers));
+
+                alert(`✓ Progress auto-synced from URL!\nWelcome back, ${userData.codeName}!`);
+
+                // Clean URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        } catch (error) {
+            console.error('Failed to sync from URL:', error);
+        }
+    }
+}
+
+function getShareableURL(userId) {
+    const code = generateShareCode(userId);
+    const baseURL = window.location.origin + window.location.pathname;
+    const shareURL = `${baseURL}?sync=${encodeURIComponent(code)}`;
+
+    navigator.clipboard.writeText(shareURL).then(() => {
+        alert(`✓ Shareable URL copied to clipboard!\n\nOpen this URL on another device to auto-sync your progress.\n\nNote: The URL is very long. For shorter codes, use the "Copy Share Code" option instead.`);
+    }).catch(() => {
+        prompt('Copy this URL to auto-sync on another device:', shareURL);
+    });
+}
+
+// ===================================
 // INITIALIZE GAME
 // ===================================
 
 loadAllUsers();
+checkURLSync(); // Check for URL-based sync
 showPalaceSelect();
 
 
