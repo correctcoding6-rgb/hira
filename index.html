@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
+    <title>Hiragana Phantom Thieves - Master the Metaverse</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="scanlines"></div>
+    
+    <div class="container">
+        <div class="game-header">
+            <div class="game-logo">🎭 HIRAGANA PHANTOM THIEVES 🎭</div>
+            <div class="game-subtitle">Master the Metaverse of Japanese Writing</div>
+        </div>
+
+        <div class="main-grid">
+            <!-- Main Content Area -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span id="panelTitle">📍 THIEVES' DEN</span>
+                    <div class="calendar-display">
+                        <div class="calendar-date" id="gameDate">DAY 001</div>
+                    </div>
+                </div>
+                <div class="panel-content" id="mainContent">
+                    <!-- Dynamic content goes here -->
+                </div>
+            </div>
+
+            <!-- Side Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>👤 PHANTOM THIEF</span>
+                    <span class="user-icon" onclick="showUserMenu()" title="Manage Thieves">🎭</span>
+                </div>
+                <div class="panel-content">
+                    <div class="character-card">
+                        <div class="stat-row">
+                            <span class="stat-label">CODENAME</span>
+                            <span class="stat-value" id="codeName" style="color: #ff0000;">JOKER</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">LEVEL</span>
+                            <span class="stat-value" id="playerLevel">1</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">HP</span>
+                            <div class="stat-bar">
+                                <div class="stat-fill hp-fill" id="hpBar" style="width: 100%"></div>
+                            </div>
+                            <span class="stat-value"><span id="currentHp">100</span>/<span id="maxHp">100</span></span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">SP</span>
+                            <div class="stat-bar">
+                                <div class="stat-fill sp-fill" id="spBar" style="width: 100%"></div>
+                            </div>
+                            <span class="stat-value"><span id="currentSp">50</span>/<span id="maxSp">50</span></span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">EXP</span>
+                            <div class="stat-bar">
+                                <div class="stat-fill xp-fill" id="xpBar" style="width: 0%"></div>
+                            </div>
+                            <span class="stat-value"><span id="currentXp">0</span>/<span id="maxXp">100</span></span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">MONEY</span>
+                            <span class="stat-value" style="color: #ffff00;" id="moneyAmount">¥0</span>
+                        </div>
+                    </div>
+
+                    <!-- Battle Cheatsheet -->
+                    <div id="battleCheatsheet" style="display: none; margin-top: 20px;">
+                        <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>🎯 CURRENT BATTLE</span>
+                            <span class="toggle-btn" id="cheatsheetToggle" onclick="toggleCheatsheet()" style="cursor: pointer; font-size: 14px;" title="Show/Hide">👁️</span>
+                        </div>
+                        <div id="cheatsheetContent" class="cheatsheet-grid">
+                            <!-- Character reference will appear here during battle -->
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <div class="section-title">📖 CONFIDANTS</div>
+                        <div class="confidant-list" id="confidantList">
+                            <!-- Confidant items will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
